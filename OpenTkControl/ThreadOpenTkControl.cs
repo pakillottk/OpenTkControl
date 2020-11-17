@@ -45,6 +45,11 @@ namespace OpenTkControl
 
         public override Task RunOnUiThread(Action action)
         {
+            if(Dispatcher.HasShutdownStarted)
+            {
+                return null;
+            }
+
             return Dispatcher.InvokeAsync(action).Task;
         }
 

@@ -252,6 +252,18 @@ namespace OpenTkControl
         private bool _alreadyLoaded;
 
         /// <summary>
+        /// True if the Application's Dispatcher it's already Shutting down (in this situation, we can't rely
+        /// on Dispatcher.Invoke or Dispatcher.InvokeAsync)
+        /// </summary>
+        private bool _dispatcherShuttingDown;
+
+        /// <summary>
+        /// CancellationTokenSource for tasks that won't be executed once the
+        /// dispatcher shutdown begins, avoiding interlocking
+        /// </summary>
+        private CancellationTokenSource _shutdownCTS = new CancellationTokenSource();
+
+        /// <summary>
         /// Creates the <see cref="OpenTkControlBase"/>/>
         /// </summary>
         protected OpenTkControlBase()
@@ -304,6 +316,9 @@ namespace OpenTkControl
                 {
                     if (!_alreadyLoaded)
                         return;
+
+                    _dispatcherShuttingDown = true;
+                    _shutdownCTS.Cancel();
 
                     _alreadyLoaded = false;
                     OnUnloaded(sender, new RoutedEventArgs());
@@ -525,7 +540,7 @@ namespace OpenTkControl
                     resizeBitmapTask?.Wait();
                     try
                     {
-                        _previousUpdateImageTask?.Wait();
+                        _previousUpdateImageTask?.Wait(_shutdownCTS.Token);
                     }
                     finally
                     {
